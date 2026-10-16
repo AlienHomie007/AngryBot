@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AngryBot logo: an angry robot bird. 108x108 adaptive-icon canvas; artwork stays inside the 66dp safe circle. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- antenna -->
+    <path android:strokeColor="#B0BEC5" android:strokeWidth="2.5" android:strokeLineCap="round"
+        android:pathData="M54,37 L54,28" />
+    <path android:fillColor="#00E5FF"
+        android:pathData="M51,26 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 z" />
+
+    <!-- body -->
+    <path android:fillColor="#E53935"
+        android:pathData="M30,60 a24,24 0 1,0 48,0 a24,24 0 1,0 -48,0 z" />
+    <!-- belly -->
+    <path android:fillColor="#FFCCBC"
+        android:pathData="M40,75 a14,7 0 1,0 28,0 a14,7 0 1,0 -28,0 z" />
+    <!-- side bolts -->
+    <path android:fillColor="#B0BEC5"
+        android:pathData="M30,62 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 z M74,62 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 z" />
+
+    <!-- eyes -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M38,56 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 z M56,56 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 z" />
+    <path android:fillColor="#0D1B2A"
+        android:pathData="M43,57 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0 z M58,57 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0 z" />
+    <!-- glowing robot pupils -->
+    <path android:fillColor="#00E5FF"
+        android:pathData="M45,57 a1.6,1.6 0 1,0 3.2,0 a1.6,1.6 0 1,0 -3.2,0 z M59.8,57 a1.6,1.6 0 1,0 3.2,0 a1.6,1.6 0 1,0 -3.2,0 z" />
+
+    <!-- angry brows -->
+    <path android:fillColor="#1A1A1A"
+        android:pathData="M35,45 L53,50 L52,54 L34,49 Z M73,45 L55,50 L56,54 L74,49 Z" />
+
+    <!-- beak -->
+    <path android:fillColor="#FF8F00"
+        android:pathData="M48,67 L60,67 L54,73 Z" />
+    <path android:fillColor="#FFC107"
+        android:pathData="M46,63 L62,63 L54,69 Z" />
+</vector>
