@@ -2,8 +2,10 @@ package com.angrybot;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.Gravity;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -24,6 +26,11 @@ public class MainActivity extends Activity {
         TextView title = new TextView(this);
         title.setText("AngryBot");
         title.setTextSize(28);
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        Drawable logo = getApplicationInfo().loadIcon(getPackageManager());
+        logo.setBounds(0, 0, 160, 160);
+        title.setCompoundDrawablesRelative(logo, null, null, null);
+        title.setCompoundDrawablePadding(24);
         root.addView(title);
 
         TextView help = new TextView(this);
