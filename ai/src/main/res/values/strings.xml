@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AngryBot AI</string>
+    <string name="service_description">Watches Angry Birds 2 through a live screen feed and plays it by itself: presses buttons, closes pop-ups and aims at the pigs.</string>
+</resources>
