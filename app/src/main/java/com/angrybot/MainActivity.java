@@ -43,7 +43,13 @@ public class MainActivity extends Activity {
                 + "4. Tap ● Rec and play the level. Each drag or tap is sent to the game once you lift your finger, "
                 + "so let go and wait for each move to happen.\n\n"
                 + "5. Tap ■ Stop when you've won. Go back to the same start screen and tap ▶ Play, "
-                + "or ⟳ Loop to repeat it until you tap ■ Stop.");
+                + "or ⟳ Loop to repeat it until you tap ■ Stop.\n\n"
+                + "AI mode (Android 11+):\n"
+                + "• Tap 🎯 Calib once, then pull a bird ALL the way back and let go. This teaches the AI where the slingshot is.\n"
+                + "• Tap 🧠 AI. It watches the screen, presses Play/Continue/Retry, closes pop-ups and aims at the pigs, "
+                + "getting more accurate after each shot. Tap 🧠 AI or ■ Stop to stop it.\n"
+                + "• 👁 Debug shows what it sees (cyan = pigs, yellow = buttons, orange = close X). "
+                + "📸 Snap saves a screenshot to Pictures/AngryBot.");
         root.addView(help);
 
         Button open = new Button(this);
