@@ -41,6 +41,8 @@ public class BotService extends AccessibilityService {
     private static final long FIRST_GAP_MS = 1000;   // wait before the first gesture on Play
     private static final long LOOP_PAUSE_MS = 3000;  // wait between loop runs
     private static final float MIN_STEP_PX = 4f;     // drop path points closer than this
+    private static final long PASS_THROUGH_DELAY_MS = 150;  // let "not touchable" take effect before injecting
+    private static final long SETTLE_MS = 150;              // ignore touches briefly after an injection ends
 
     /** One finger gesture: wait gapMs after the previous one finished, then follow the points over durMs. */
     static class Stroke {
@@ -61,6 +63,7 @@ public class BotService extends AccessibilityService {
     private boolean playing, looping;
     private int run;
     private long lastInjectEnd;  // uptime when the previous recorded gesture finished replaying
+    boolean passingThrough;      // true while a recorded gesture is being forwarded to the game
 
     @Override
     protected void onServiceConnected() {
@@ -190,6 +193,9 @@ public class BotService extends AccessibilityService {
 
     /** Called by CaptureView when a finger is lifted. */
     void onGestureCaptured(List<float[]> pts, long durMs) {
+        // Our own forwarded gesture can land back on this layer if Android hasn't applied
+        // "not touchable" yet; recording it again caused every move to happen twice.
+        if (passingThrough) return;
         long now = SystemClock.uptimeMillis();
         Stroke s = new Stroke();
         s.durMs = Math.max(1, Math.min(durMs, GestureDescription.getMaxGestureDuration()));
@@ -206,9 +212,14 @@ public class BotService extends AccessibilityService {
         save();
         setStatus("REC · " + strokes.size() + " moves");
 
-        // let the gesture through to the game: make our layer see-through for touches while it plays
+        // let the gesture through to the game: make our layer see-through for touches,
+        // wait for that to apply, then forward it; ignore everything until it has finished
+        passingThrough = true;
         setCaptureTouchable(false);
-        inject(s, ok -> setCaptureTouchable(true));
+        handler.postDelayed(() -> inject(s, ok -> {
+            setCaptureTouchable(true);
+            handler.postDelayed(() -> passingThrough = false, SETTLE_MS);
+        }), PASS_THROUGH_DELAY_MS);
     }
 
     private void setCaptureTouchable(boolean touchable) {
@@ -268,6 +279,7 @@ public class BotService extends AccessibilityService {
 
     private void stopAll() {
         playing = false;
+        passingThrough = false;
         handler.removeCallbacksAndMessages(null);
         if (capture != null) {
             wm.removeView(capture);
@@ -371,6 +383,12 @@ public class BotService extends AccessibilityService {
         @Override
         public boolean onTouchEvent(MotionEvent e) {
             float x = e.getRawX(), y = e.getRawY();
+            if (service.passingThrough) {  // our own forwarded gesture echoing back - don't record or draw it
+                pts.clear();
+                drawPath.reset();
+                invalidate();
+                return true;
+            }
             if (pts.isEmpty() && e.getActionMasked() != MotionEvent.ACTION_DOWN) return true;
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
