@@ -3,17 +3,25 @@ package com.angrybot;
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
 import android.annotation.SuppressLint;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
+import android.graphics.Point;
+import android.graphics.Rect;
+import android.hardware.HardwareBuffer;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.provider.MediaStore;
+import android.view.Display;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -26,15 +34,22 @@ import android.widget.TextView;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 
 /**
  * Floating control bar over the game.
- * Rec  – a transparent layer catches each drag/tap you make, saves it, and passes it on to the game.
- * Play – replays the saved gestures with the same timing.  Loop – replays forever until Stop.
+ * Rec   – a transparent layer catches each drag/tap you make, saves it, and passes it on to the game.
+ * Play  – replays the saved gestures with the same timing.  Loop – replays forever until Stop.
+ * Calib – you pull the slingshot all the way back once, so the AI knows where it is and how far it pulls.
+ * AI    – plays by itself: looks at the screen, presses buttons, aims at pigs (see AiPlayer).
+ * Debug – draws what the AI sees.  Snap – saves a screenshot with the AI's findings to Pictures/AngryBot.
  */
-public class BotService extends AccessibilityService {
+public class BotService extends AccessibilityService implements AiPlayer.Host {
 
     private static final String PREFS = "angrybot";
     private static final String KEY = "level11";
@@ -52,6 +67,7 @@ public class BotService extends AccessibilityService {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final List<Stroke> strokes = new ArrayList<>();
+    private final ExecutorService shots = Executors.newSingleThreadExecutor();
 
     private WindowManager wm;
     private LinearLayout bar;
@@ -59,22 +75,32 @@ public class BotService extends AccessibilityService {
     private TextView status;
     private CaptureView capture;
     private WindowManager.LayoutParams captureLp;
+    private DebugView debugView;
+    private AiPlayer ai;
 
-    private boolean playing, looping;
+    private boolean playing, looping, calibrating;
     private int run;
     private long lastInjectEnd;  // uptime when the previous recorded gesture finished replaying
     boolean passingThrough;      // true while a recorded gesture is being forwarded to the game
+    private int barBlocks;       // AI gestures in flight that must pass under the control bar
+    private String frontPackage; // app currently on screen
 
     @Override
     protected void onServiceConnected() {
         wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
         load();
+        ai = new AiPlayer(this, prefs());
         showBar();
         setStatus("Ready · " + strokes.size() + " moves");
     }
 
     @Override
-    public void onAccessibilityEvent(AccessibilityEvent event) { }
+    public void onAccessibilityEvent(AccessibilityEvent event) {
+        if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && event.getPackageName() != null) {
+            String p = event.getPackageName().toString();
+            if (!p.equals(getPackageName()) && !p.equals("com.android.systemui")) frontPackage = p;
+        }
+    }
 
     @Override
     public void onInterrupt() {
@@ -85,8 +111,10 @@ public class BotService extends AccessibilityService {
     public void onDestroy() {
         if (wm != null) {
             stopAll();
+            if (debugView != null) wm.removeView(debugView);
             if (bar != null) wm.removeView(bar);
         }
+        shots.shutdownNow();
         super.onDestroy();
     }
 
@@ -119,17 +147,24 @@ public class BotService extends AccessibilityService {
         });
         bar.addView(handle);
 
-        addButton("● Rec", v -> startRecording());
-        addButton("▶ Play", v -> startPlaying(false));
-        addButton("⟳ Loop", v -> startPlaying(true));
-        addButton("■ Stop", v -> stopAll());
-        addButton("↶ Undo", v -> undo());
+        LinearLayout row = addRow();
+        addButton(row, "● Rec", v -> startRecording());
+        addButton(row, "▶ Play", v -> startPlaying(false));
+        addButton(row, "⟳ Loop", v -> startPlaying(true));
+        row = addRow();
+        addButton(row, "■ Stop", v -> stopAll());
+        addButton(row, "↶ Undo", v -> undo());
+        addButton(row, "🎯 Calib", v -> startCalibration());
+        row = addRow();
+        addButton(row, "🧠 AI", v -> toggleAi());
+        addButton(row, "👁 Debug", v -> toggleDebug());
+        addButton(row, "📸 Snap", v -> snap());
 
         status = new TextView(this);
         status.setTextColor(0xFFFFD54F);
         status.setTextSize(10);
         status.setPadding(8, 4, 8, 4);
-        status.setMaxWidth(260);
+        status.setMaxWidth(420);
         bar.addView(status);
 
         barLp = new WindowManager.LayoutParams(
@@ -145,7 +180,14 @@ public class BotService extends AccessibilityService {
         wm.addView(bar, barLp);
     }
 
-    private void addButton(String label, View.OnClickListener l) {
+    private LinearLayout addRow() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        bar.addView(row);
+        return row;
+    }
+
+    private void addButton(LinearLayout row, String label, View.OnClickListener l) {
         Button b = new Button(this);
         b.setText(label);
         b.setTextSize(11);
@@ -156,20 +198,44 @@ public class BotService extends AccessibilityService {
         b.setMinimumHeight(0);
         b.setPadding(16, 8, 16, 8);
         b.setOnClickListener(l);
-        bar.addView(b);
+        row.addView(b);
     }
 
     private void setStatus(String s) {
         if (status != null) status.setText(s);
     }
 
-    // ---------------------------------------------------------------- recording
+    private void setBarTouchable(boolean touchable) {
+        if (bar == null) return;
+        if (touchable) barLp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+        else barLp.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+        wm.updateViewLayout(bar, barLp);
+    }
+
+    /** Re-adds the bar so it sits above a layer that was just added. */
+    private void raiseBar() {
+        wm.removeView(bar);
+        wm.addView(bar, barLp);
+    }
+
+    // ---------------------------------------------------------------- recording & calibration
 
     private void startRecording() {
         stopAll();
         strokes.clear();
         lastInjectEnd = 0;
+        showCapture();
+        setStatus("REC · 0 moves");
+    }
 
+    private void startCalibration() {
+        stopAll();
+        calibrating = true;
+        showCapture();
+        setStatus("CALIB: put a bird on the slingshot, pull it ALL the way back, let go");
+    }
+
+    private void showCapture() {
         capture = new CaptureView(this);
         captureLp = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -185,10 +251,13 @@ public class BotService extends AccessibilityService {
                     WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         }
         wm.addView(capture, captureLp);
-        // keep the control bar above the capture layer
-        wm.removeView(bar);
-        wm.addView(bar, barLp);
-        setStatus("REC · 0 moves");
+        raiseBar();  // keep the control bar above the capture layer
+    }
+
+    private void removeCapture() {
+        if (capture == null) return;
+        wm.removeView(capture);
+        capture = null;
     }
 
     /** Called by CaptureView when a finger is lifted. */
@@ -207,17 +276,39 @@ public class BotService extends AccessibilityService {
             s.xs[i] = pts.get(i)[0];
             s.ys[i] = pts.get(i)[1];
         }
+
+        if (calibrating) {
+            float[] a = pts.get(0), b = pts.get(pts.size() - 1);
+            float pull = (float) Math.hypot(b[0] - a[0], b[1] - a[1]);
+            calibrating = false;
+            if (pull < 60) {
+                setStatus("CALIB: that was too short - tap 🎯 Calib and pull further");
+                removeCapture();
+                return;
+            }
+            ai.saveCalibration(a[0], a[1], pull);
+            setStatus("Calibrated ✓ Now tap 🧠 AI");
+            passThrough(s, this::removeCapture);
+            return;
+        }
+
         strokes.add(s);
         lastInjectEnd = now + s.durMs;
         save();
         setStatus("REC · " + strokes.size() + " moves");
+        passThrough(s, null);
+    }
 
-        // let the gesture through to the game: make our layer see-through for touches,
-        // wait for that to apply, then forward it; ignore everything until it has finished
+    /**
+     * Let a captured gesture through to the game: make our layer see-through for touches,
+     * wait for that to apply, then forward it; ignore everything until it has finished.
+     */
+    private void passThrough(Stroke s, Runnable after) {
         passingThrough = true;
         setCaptureTouchable(false);
         handler.postDelayed(() -> inject(s, ok -> {
             setCaptureTouchable(true);
+            if (after != null) after.run();
             handler.postDelayed(() -> passingThrough = false, SETTLE_MS);
         }), PASS_THROUGH_DELAY_MS);
     }
@@ -280,16 +371,207 @@ public class BotService extends AccessibilityService {
     private void stopAll() {
         playing = false;
         passingThrough = false;
+        calibrating = false;
+        if (ai != null) ai.stop();
         handler.removeCallbacksAndMessages(null);
+        barBlocks = 0;
+        setBarTouchable(true);
         if (capture != null) {
-            wm.removeView(capture);
-            capture = null;
+            removeCapture();
             save();
         }
         setStatus("Ready · " + strokes.size() + " moves");
     }
 
-    // ---------------------------------------------------------------- gesture injection
+    // ---------------------------------------------------------------- AI, debug view, snapshots
+
+    private void toggleAi() {
+        if (ai.isRunning()) {
+            stopAll();
+            setStatus("AI stopped");
+            return;
+        }
+        stopAll();
+        if (Build.VERSION.SDK_INT < 30) {
+            setStatus("The AI needs Android 11 or newer");
+            return;
+        }
+        ai.start();
+    }
+
+    private void toggleDebug() {
+        if (debugView != null) {
+            wm.removeView(debugView);
+            debugView = null;
+            setStatus("Debug off");
+            return;
+        }
+        debugView = new DebugView(this);
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT);
+        lp.gravity = Gravity.TOP | Gravity.START;
+        if (Build.VERSION.SDK_INT >= 28) {
+            lp.layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+        wm.addView(debugView, lp);
+        raiseBar();
+        debugView.show(ai.lastFrame(), null);
+        setStatus("Debug on: cyan = pigs, yellow = buttons, orange = close X");
+    }
+
+    /** Saves the current screen (plain + with the AI's findings drawn on) to Pictures/AngryBot. */
+    private void snap() {
+        setStatus("Snap: taking screenshot…");
+        Rect barArea = barRect();
+        screenshot(bmp -> {
+            if (bmp == null) {
+                handler.post(() -> setStatus("Snap failed (needs Android 11+)"));
+                return;
+            }
+            Vision.Frame f = Vision.analyze(bmp, barArea);
+            boolean ok = savePng(bmp, "plain");
+            Bitmap marked = bmp.copy(Bitmap.Config.ARGB_8888, true);
+            DebugView.draw(new Canvas(marked), f, null);
+            ok &= savePng(marked, "ai");
+            marked.recycle();
+            bmp.recycle();
+            boolean saved = ok;
+            handler.post(() -> {
+                if (debugView != null) debugView.show(f, null);
+                setStatus(saved
+                        ? "Saved to Pictures/AngryBot · AI sees " + f.pigs.size() + " pigs, " + f.buttons.size() + " buttons"
+                        : "Snap: saving failed");
+            });
+        });
+    }
+
+    private boolean savePng(Bitmap b, String tag) {
+        if (Build.VERSION.SDK_INT < 29) return false;
+        try {
+            ContentValues v = new ContentValues();
+            v.put(MediaStore.Images.Media.DISPLAY_NAME, "angrybot_" + System.currentTimeMillis() + "_" + tag + ".png");
+            v.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+            v.put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/AngryBot");
+            Uri uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, v);
+            if (uri == null) return false;
+            try (OutputStream os = getContentResolver().openOutputStream(uri)) {
+                return os != null && b.compress(Bitmap.CompressFormat.PNG, 100, os);
+            }
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // AiPlayer.Host ------------------------------------------------
+
+    @Override
+    public void screenshot(Consumer<Bitmap> cb) {
+        if (Build.VERSION.SDK_INT < 30) {
+            cb.accept(null);
+            return;
+        }
+        takeScreenshot(Display.DEFAULT_DISPLAY, shots, new TakeScreenshotCallback() {
+            @Override
+            public void onSuccess(ScreenshotResult result) {
+                HardwareBuffer hb = result.getHardwareBuffer();
+                Bitmap hw = Bitmap.wrapHardwareBuffer(hb, result.getColorSpace());
+                Bitmap sw = hw == null ? null : hw.copy(Bitmap.Config.ARGB_8888, false);
+                if (hw != null) hw.recycle();
+                hb.close();
+                cb.accept(sw);
+            }
+
+            @Override
+            public void onFailure(int errorCode) {
+                cb.accept(null);
+            }
+        });
+    }
+
+    @Override
+    public void tap(float x, float y, Runnable done) {
+        Path p = new Path();
+        p.moveTo(Math.max(0, x), Math.max(0, y));
+        dispatchAi(p, 60, done);
+    }
+
+    @Override
+    public void swipe(float x1, float y1, float x2, float y2, long durMs, Runnable done) {
+        Path p = new Path();
+        p.moveTo(Math.max(0, x1), Math.max(0, y1));
+        p.lineTo(Math.max(0, x2), Math.max(0, y2));
+        dispatchAi(p, durMs, done);
+    }
+
+    /** Sends an AI gesture to the game, letting it pass under the control bar. */
+    private void dispatchAi(Path p, long durMs, Runnable done) {
+        barBlocks++;
+        setBarTouchable(false);
+        handler.postDelayed(() -> {
+            Runnable finish = () -> {
+                if (--barBlocks <= 0) {
+                    barBlocks = 0;
+                    setBarTouchable(true);
+                }
+                if (done != null) done.run();
+            };
+            GestureDescription g = new GestureDescription.Builder()
+                    .addStroke(new GestureDescription.StrokeDescription(p, 0, Math.max(1, durMs)))
+                    .build();
+            boolean sent = dispatchGesture(g, new GestureResultCallback() {
+                @Override public void onCompleted(GestureDescription d) { finish.run(); }
+                @Override public void onCancelled(GestureDescription d) { finish.run(); }
+            }, null);
+            if (!sent) finish.run();
+        }, PASS_THROUGH_DELAY_MS);
+    }
+
+    @Override
+    public void status(String s) {
+        setStatus(s);
+    }
+
+    @Override
+    public void showDebug(Vision.Frame f, float[] aim) {
+        if (debugView != null) debugView.show(f, aim);
+    }
+
+    @Override
+    public Rect barRect() {
+        int[] loc = new int[2];
+        bar.getLocationOnScreen(loc);
+        return new Rect(loc[0], loc[1], loc[0] + bar.getWidth(), loc[1] + bar.getHeight());
+    }
+
+    @Override
+    public boolean gameInFront() {
+        // unknown (service just started with the game already open) counts as "yes"
+        return frontPackage == null || frontPackage.contains("rovio");
+    }
+
+    @Override
+    public int screenW() {
+        Point p = new Point();
+        wm.getDefaultDisplay().getRealSize(p);
+        return p.x;
+    }
+
+    @Override
+    public int screenH() {
+        Point p = new Point();
+        wm.getDefaultDisplay().getRealSize(p);
+        return p.y;
+    }
+
+    // ---------------------------------------------------------------- gesture injection (recordings)
 
     interface Done { void run(boolean ok); }
 
