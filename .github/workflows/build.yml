@@ -20,18 +20,27 @@ jobs:
         with:
           gradle-version: '8.7'
       - run: gradle assembleDebug
-      - run: cp app/build/outputs/apk/debug/app-debug.apk AngryBot.apk
+      - run: |
+          cp app/build/outputs/apk/debug/app-debug.apk AngryBot.apk
+          cp ai/build/outputs/apk/debug/ai-debug.apk AngryBot-AI.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: AngryBot-apk
-          path: AngryBot.apk
-      # Public download link that never changes:
+          name: AngryBot-apks
+          path: |
+            AngryBot.apk
+            AngryBot-AI.apk
+      # Public download links that never change:
       # https://github.com/AlienHomie007/AngryBot/releases/latest/download/AngryBot.apk
+      # https://github.com/AlienHomie007/AngryBot/releases/latest/download/AngryBot-AI.apk
       - uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
           tag_name: latest
           name: AngryBot (latest build)
-          body: Download AngryBot.apk below and open it on your Android phone.
-          files: AngryBot.apk
+          body: |
+            AngryBot.apk - the recorder: record a level once, replay it.
+            AngryBot-AI.apk - the AI: watches the screen live and plays by itself (Android 11+).
+          files: |
+            AngryBot.apk
+            AngryBot-AI.apk
           make_latest: true
