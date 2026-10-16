@@ -17,10 +17,10 @@ AngryBot is an accessibility service. It puts a small floating control bar over 
 
 Drag the bar by its **⠿ AngryBot** label.
 
-## Get the APK
-1. Open this repository's **Actions** tab. Every change rebuilds the app with the **Build APK** workflow (about 3–5 minutes).
-2. Open the newest run with a green tick and download **AngryBot-apk** under *Artifacts*. Unzip it to get `app-debug.apk`.
-3. Copy the APK to your phone (email, Drive, etc.) and open it. Allow "Install unknown apps" when the phone asks.
+## Download
+**[⬇ Download AngryBot.apk](https://github.com/AlienHomie007/AngryBot/releases/latest/download/AngryBot.apk)**
+
+Open that link on your Android phone, then open the downloaded file. Allow "Install unknown apps" when the phone asks. If you're updating, uninstall the old AngryBot first.
 
 ## Use it
 1. Open AngryBot → **Open Accessibility settings** → turn on **AngryBot**.
