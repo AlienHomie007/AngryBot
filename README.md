@@ -33,24 +33,20 @@ Open that link on your Android phone, then open the downloaded file. Allow "Inst
 5. If a shot missed, tap **● Rec** again to start a new recording (it replaces the old one).
 6. From level 11's start screen, tap **▶ Play** or **⟳ Loop**.
 
-## AI mode (Android 11+)
-Instead of replaying your moves, the AI plays by itself. About once a second it takes a screenshot and works out what's going on:
+## AngryBot AI (separate app)
+**[⬇ Download AngryBot-AI.apk](https://github.com/AlienHomie007/AngryBot/releases/latest/download/AngryBot-AI.apk)** · Android 11+ · purple icon
 
-| It sees | It does |
-|---|---|
-| Things still moving | Waits for the screen to settle |
-| A green button (Play, Continue, Retry) | Presses it. **It skips any button showing a gem price.** |
-| Pigs, with the scene still | Aims at a pig using slingshot physics and fires. It taps mid-flight to use the bird's power. |
-| Only a red close (X) button | Closes the pop-up |
-| Nothing it recognizes for 15 s | Taps the middle of the screen to nudge the game on |
+A separate app that plays by itself instead of replaying a recording. It installs next to AngryBot and doesn't change it.
 
-After every shot it checks whether a pig disappeared and where the bird landed, then corrects its aim, so it gets more accurate as it plays. If a pig survives several shots, it tries a high arc and then a different pig. It only acts while Angry Birds 2 is on screen.
+- **Live screen feed.** It watches the screen 30–60 times a second through Android's screen-capture feed. Frames stay in memory; nothing is saved. It reacts as soon as the game is ready instead of taking screenshots one by one.
+- **Understands the screen.** It finds pigs, green buttons (Play, Continue, Retry) and red close (X) buttons. **It never presses a button that shows a gem price.** It waits while things move and nudges the game if it gets stuck.
+- **Aims with physics and learns.** After every shot it checks what changed, corrects its aim, and switches arc or target after misses. It taps mid-flight to use the bird's power.
 
-**Set up once:** open a level, tap **🎯 Calib**, then pull the bird *all the way back* and let go. This tells the AI where the slingshot is and how far it pulls.
-
-**Play:** tap **🧠 AI**. Tap it again, or tap **■ Stop**, to stop.
-
-**If it misreads the screen:** turn on **👁 Debug** to see what it detects (cyan = pigs, yellow = buttons, orange = close X). Use **📸 Snap** to save the screen to *Pictures/AngryBot*, then share the images so the colour rules in `Vision.java` can be tuned.
+**Use it**
+1. Turn on **AngryBot AI** in Accessibility settings. A purple bar appears.
+2. In a level, tap **🎯 Calib**, then pull the bird *all the way back* and let go. You only need to do this once.
+3. Tap **🧠 AI**, then tap **Start** on Android's screen-capture prompt. **■ Stop** ends it.
+4. **👀 Watch** shows what it sees without making moves (cyan = pigs, yellow = buttons, orange = close X). **📸 Snap** saves that view to *Pictures/AngryBot*. Share the images so the colour rules in `ai/.../Vision.java` can be tuned.
 
 ## Limits
 - It replays your moves exactly. It doesn't look at the screen. If Angry Birds 2 deals a different bird card, shows a pop-up or offer, or the physics play out slightly differently, a run can fail. Running Loop helps.
