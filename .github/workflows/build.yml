@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,7 +20,18 @@ jobs:
         with:
           gradle-version: '8.7'
       - run: gradle assembleDebug
+      - run: cp app/build/outputs/apk/debug/app-debug.apk AngryBot.apk
       - uses: actions/upload-artifact@v4
         with:
           name: AngryBot-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: AngryBot.apk
+      # Public download link that never changes:
+      # https://github.com/AlienHomie007/AngryBot/releases/latest/download/AngryBot.apk
+      - uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: latest
+          name: AngryBot (latest build)
+          body: Download AngryBot.apk below and open it on your Android phone.
+          files: AngryBot.apk
+          make_latest: true
