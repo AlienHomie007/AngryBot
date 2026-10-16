@@ -33,6 +33,25 @@ Open that link on your Android phone, then open the downloaded file. Allow "Inst
 5. If a shot missed, tap **● Rec** again to start a new recording (it replaces the old one).
 6. From level 11's start screen, tap **▶ Play** or **⟳ Loop**.
 
+## AI mode (Android 11+)
+Instead of replaying your moves, the AI plays by itself. About once a second it takes a screenshot and works out what's going on:
+
+| It sees | It does |
+|---|---|
+| Things still moving | Waits for the screen to settle |
+| A green button (Play, Continue, Retry) | Presses it. **It skips any button showing a gem price.** |
+| Pigs, with the scene still | Aims at a pig using slingshot physics and fires. It taps mid-flight to use the bird's power. |
+| Only a red close (X) button | Closes the pop-up |
+| Nothing it recognizes for 15 s | Taps the middle of the screen to nudge the game on |
+
+After every shot it checks whether a pig disappeared and where the bird landed, then corrects its aim, so it gets more accurate as it plays. If a pig survives several shots, it tries a high arc and then a different pig. It only acts while Angry Birds 2 is on screen.
+
+**Set up once:** open a level, tap **🎯 Calib**, then pull the bird *all the way back* and let go. This tells the AI where the slingshot is and how far it pulls.
+
+**Play:** tap **🧠 AI**. Tap it again, or tap **■ Stop**, to stop.
+
+**If it misreads the screen:** turn on **👁 Debug** to see what it detects (cyan = pigs, yellow = buttons, orange = close X). Use **📸 Snap** to save the screen to *Pictures/AngryBot*, then share the images so the colour rules in `Vision.java` can be tuned.
+
 ## Limits
 - It replays your moves exactly. It doesn't look at the screen. If Angry Birds 2 deals a different bird card, shows a pop-up or offer, or the physics play out slightly differently, a run can fail. Running Loop helps.
 - Keep the phone in the same orientation and display settings you recorded with.
