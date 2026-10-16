@@ -13,3 +13,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "AngryBot"
 include ':app'
+include ':ai'
