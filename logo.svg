@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 18 72 72" width="256" height="256">
+  <defs><clipPath id="c"><rect x="18" y="18" width="72" height="72" rx="16"/></clipPath></defs>
+  <g clip-path="url(#c)">
+    <rect x="0" y="0" width="108" height="108" fill="#1B2440"/>
+    <circle cx="54" cy="58" r="36" fill="#26335A"/>
+    <path d="M54,37 L54,28" stroke="#B0BEC5" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="54" cy="26" r="3" fill="#00E5FF"/>
+    <circle cx="54" cy="60" r="24" fill="#E53935"/>
+    <ellipse cx="54" cy="75" rx="14" ry="7" fill="#FFCCBC"/>
+    <circle cx="32" cy="62" r="2" fill="#B0BEC5"/>
+    <circle cx="76" cy="62" r="2" fill="#B0BEC5"/>
+    <circle cx="45" cy="56" r="7" fill="#FFFFFF"/>
+    <circle cx="63" cy="56" r="7" fill="#FFFFFF"/>
+    <circle cx="46.5" cy="57" r="3.5" fill="#0D1B2A"/>
+    <circle cx="61.5" cy="57" r="3.5" fill="#0D1B2A"/>
+    <circle cx="46.6" cy="57" r="1.6" fill="#00E5FF"/>
+    <circle cx="61.4" cy="57" r="1.6" fill="#00E5FF"/>
+    <path d="M35,45 L53,50 L52,54 L34,49 Z M73,45 L55,50 L56,54 L74,49 Z" fill="#1A1A1A"/>
+    <path d="M48,67 L60,67 L54,73 Z" fill="#FF8F00"/>
+    <path d="M46,63 L62,63 L54,69 Z" fill="#FFC107"/>
+  </g>
+</svg>
