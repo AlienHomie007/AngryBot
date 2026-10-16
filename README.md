@@ -1,3 +1,5 @@
+<img src="logo.svg" width="128" alt="AngryBot logo">
+
 # AngryBot
 
 An Android app that records you playing Angry Birds 2 level 11 and then replays it on its own. It runs on the phone by itself, with no PC, cable or root needed.
