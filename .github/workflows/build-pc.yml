@@ -1,0 +1,36 @@
+name: Build PC
+
+on:
+  push:
+    paths:
+      - 'pc/**'
+      - '.github/workflows/build-pc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        shell: cmd
+        run: pc\build.cmd
+      - name: Self-test
+        shell: cmd
+        run: pc\tests\SelfTest.exe
+      - shell: cmd
+        run: copy pc\AngryBot.exe AngryBot-PC.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AngryBot-PC
+          path: AngryBot-PC.exe
+      # Public download link that never changes:
+      # https://github.com/AlienHomie007/AngryBot/releases/latest/download/AngryBot-PC.exe
+      - uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: latest
+          files: AngryBot-PC.exe
